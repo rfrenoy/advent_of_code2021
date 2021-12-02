@@ -18,6 +18,6 @@ def read_input(filepath: str) -> List[int]:
 
 
 if __name__ == '__main__':
-    inputs = read_input('../inputs/day1.txt')
+    inputs = read_input('./inputs/day1.txt')
     print(nb_increased_values(inputs, 1))
     print(nb_increased_values(inputs, 3))
