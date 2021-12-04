@@ -4,9 +4,9 @@ from typing import List, Sequence
 def nb_increased_values(in_list: Sequence[int], sequence_length: int) -> int:
     nb_inc = 0
     for i in range(len(in_list)):
-        if i-1 >= 0 and i+sequence_length-1 < len(in_list):
-            last_three_values = in_list[i-1:i+sequence_length-1]
-            current_three_values = in_list[i:i+sequence_length]
+        if i - 1 >= 0 and i + sequence_length - 1 < len(in_list):
+            last_three_values = in_list[i - 1:i + sequence_length - 1]
+            current_three_values = in_list[i:i + sequence_length]
             if sum(last_three_values) < sum(current_three_values):
                 nb_inc += 1
     return nb_inc
