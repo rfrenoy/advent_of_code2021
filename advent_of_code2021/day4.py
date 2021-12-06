@@ -1,97 +1,108 @@
+from __future__ import annotations
 from typing import List, Tuple
 
 
-def read_puzzle(filepath: str) -> Tuple[List[int], List[List[List[int]]]]:
-    boards = []
-    with open(filepath, 'r') as in_f:
-        lines = in_f.readlines()
-        draws = [int(x) for x in lines[0].split(',')]
-        for i in range(2, len(lines) - 4, 6):
-            board = [[int(x) for x in lines[j].split(' ') if x != '']
-                     for j in range(i, i + 5)]
-            boards.append(board)
-    return draws, boards
+class Game:
+    def __init__(self):
+        self.boards = []
+        self.draws = []
+
+    @classmethod
+    def read_puzzle(cls, filepath: str) -> Game:
+        game = Game()
+        with open(filepath, 'r') as in_f:
+            lines = in_f.readlines()
+            game.draws = [int(x) for x in lines[0].split(',')]
+            for i in range(2, len(lines) - 4, 6):
+                board = Board(
+                    [[int(x) for x in lines[j].split(' ') if x != '']
+                     for j in range(i, i + 5)])
+                game.boards.append(board)
+        return game
+
+    def first_winning_puzzle(self) -> Tuple[int, Board]:
+        for draw in self.draws:
+            for board in self.boards:
+                board.update_mask(draw)
+                if board.win():
+                    return draw, board
+        raise Exception('No winning puzzle')
+
+    def last_winning_puzzle(self) -> Tuple[int, Board]:
+        winning_boards = []
+        remaining_boards = list(self.boards)
+        for draw in self.draws:
+            i = 0
+            while i < len(remaining_boards):
+                board = remaining_boards[i]
+                board.update_mask(draw)
+                if board.win():
+                    winning_boards.append((draw, board))
+                    remaining_boards = remaining_boards[:i] + remaining_boards[
+                        i + 1:]
+                else:
+                    i += 1
+
+                if len(remaining_boards) == 0:
+                    return winning_boards[-1]
+
+        if len(winning_boards) > 0:
+            return winning_boards[-1]
+
+        raise Exception('No winning puzzle')
+
+    def reset(self):
+        for board in self.boards:
+            board.reset_mask()
 
 
-def update_masks(draw: int,
-                 boards: List[List[List[int]]],
-                 masks: List[List[List[int]]]) -> List[List[List[int]]]:
-    res = []
-    for i, board in enumerate(boards):
-        mask = [[masks[i][j][k] if x != draw else 1 
-                 for k, x in enumerate(board_line)]
-                 for j, board_line in enumerate(board)]
-        res.append(mask)
-    return res
+class Board:
+    def __init__(self, vals):
+        self._values = vals
+        self.reset_mask()
 
+    @property
+    def mask(self) -> List[List[int]]:
+        return self._mask
 
-def check_win(mask: List[List[int]]):
-    # Check lines
-    for line in mask:
-        if sum(line) == 5:
-            return True
-    # Check column
-    for i in range(len(mask[0])):
-        col = [line[i] for line in mask]
-        if sum(col) == 5:
-            return True
-    return False
+    def reset_mask(self):
+        self._mask = [[0 for _ in board_line] for board_line in self._values]
 
+    def win(self) -> bool:
+        # Check lines
+        for line in self._mask:
+            if sum(line) == 5:
+                return True
+        # Check column
+        for i in range(len(self._mask[0])):
+            col = [line[i] for line in self._mask]
+            if sum(col) == 5:
+                return True
+        return False
 
-def first_winning_puzzle(draws, boards):
-    masks = create_masks(boards)
-    for draw in draws:
-        masks = update_masks(draw, boards, masks)
-        for i, mask in enumerate(masks):
-            if check_win(mask):
-                return draw, boards[i], mask
-    return None, None
+    def update_mask(self, draw):
+        self._mask = [[
+            self.mask[j][k] if x != draw else 1
+            for k, x in enumerate(board_line)
+        ] for j, board_line in enumerate(self._values)]
 
-
-def last_winning_puzzle(draws, boards):
-    winning_boards = []
-    remaining_boards = list(boards)
-    masks = create_masks(boards)
-    remaining_masks = list(masks)
-    for draw in draws:
-        remaining_masks = update_masks(draw, remaining_boards, remaining_masks)
-        i = 0
-        while i < len(remaining_masks):
-            mask = remaining_masks[i]
-            if check_win(mask):
-                winning_boards.append((draw, remaining_boards[i], mask))
-                remaining_boards = remaining_boards[:i] + remaining_boards[i +
-                                                                           1:]
-
-                remaining_masks = remaining_masks[:i] + remaining_masks[i +
-                                                                           1:]
-            if len(remaining_boards) == 0:
-                return winning_boards[-1]
-            i += 1
-    return winning_boards[-1]
-
-
-def create_masks(boards):
-    return [[[0 for _ in board_line] 
-             for board_line in board]
-                for board in boards]
-
-def sum_remaining_values(board, mask):
-    res = 0
-    for i, board_line in enumerate(board):
-        for j, elt in enumerate(board_line):
-            if mask[i][j] == 0:
-                res += elt
-    return res
+    def sum_remaining_values(self) -> int:
+        res = 0
+        for i, board_line in enumerate(self._values):
+            for j, elt in enumerate(board_line):
+                if self._mask[i][j] == 0:
+                    res += elt
+        return res
 
 
 if __name__ == '__main__':
-    draws, boards = read_puzzle('./inputs/day4.txt')
+    game = Game.read_puzzle('./inputs/day4.txt')
 
-    last_draw, winning_board, mask = first_winning_puzzle(draws, boards)
-    val = sum_remaining_values(winning_board, mask)
+    last_draw, winning_board = game.first_winning_puzzle()
+    val = winning_board.sum_remaining_values()
     print(last_draw * val)
 
-    last_draw, last_winning_board, mask = last_winning_puzzle(draws, boards)
-    val = sum_remaining_values(last_winning_board, mask)
+    game.reset()
+    last_draw, last_winning_board = game.last_winning_puzzle()
+    val = last_winning_board.sum_remaining_values()
     print(last_draw * val)
